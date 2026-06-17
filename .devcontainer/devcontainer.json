@@ -1,0 +1,31 @@
+﻿{
+  "name": "Hongarije 2026",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "devcontainer",
+  "workspaceFolder": "/workspace",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-dotnettools.csdevkit",
+        "ms-dotnettools.csharp",
+        "ms-dotnettools.vscode-dotnet-runtime",
+        "esbenp.prettier-vscode",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "task.allowAutomaticTasks": "on",
+        "dotnet.defaultSolution": "/workspace/backend/HongarijePlanner.Api/HongarijePlanner.Api.csproj"
+      }
+    }
+  },
+
+  "forwardPorts": [3000, 5000, 5432],
+  "portsAttributes": {
+    "3000": { "label": "App (nginx — open this!)", "onAutoForward": "openBrowser" },
+    "5000": { "label": "API (direct access + Swagger)" },
+    "5432": { "label": "PostgreSQL" }
+  },
+
+  "postCreateCommand": "bash /workspace/.devcontainer/setup.sh"
+}

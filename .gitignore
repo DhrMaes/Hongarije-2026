@@ -1,0 +1,36 @@
+# ── .NET ──────────────────────────────────────────────────────────────────────
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.DotSettings.user
+launchSettings.json
+
+# EF Core migrations (keep Models & DbContext, skip auto-generated snapshots from local runs)
+# Remove these lines if you want to commit migrations:
+# **/Migrations/
+
+# Secrets & local overrides
+appsettings.Local.json
+secrets.json
+*.pfx
+*.p12
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+# Don't ignore docker-compose files — they are intentionally committed
+
+# ── OS ────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ── Editor ────────────────────────────────────────────────────────────────────
+# Commit tasks.json, launch.json and extensions.json — they are part of the dev setup.
+# Only ignore personal settings:
+.vscode/settings.json
+
+# ── Logs & temp ───────────────────────────────────────────────────────────────
+*.log
+*.tmp
+npm-debug.log*

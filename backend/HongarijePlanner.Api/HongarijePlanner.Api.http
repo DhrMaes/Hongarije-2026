@@ -1,0 +1,6 @@
+@HongarijePlanner.Api_HostAddress = http://localhost:5248
+
+GET {{HongarijePlanner.Api_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

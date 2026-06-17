@@ -1,0 +1,231 @@
+﻿<!DOCTYPE html>
+<html lang="nl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Hongarije 2027</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,700;1,500&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+
+</head>
+<body>
+
+<!-- ── NICKNAME SCREEN ── -->
+<div id="nickname-screen">
+  <div class="nick-card">
+    <span class="nick-flag">🇭🇺</span>
+    <h1>Hongarije 2027</h1>
+    <p class="nick-sub"></p>
+    <label for="name-input">Je naam</label>
+    <input type="text" id="name-input" placeholder="wie ben jij?" maxlength="30" />
+    <p class="nick-hint">Typ je naam zodat iedereen weet wie wat toevoegt.</p>
+    <button class="btn-go" onclick="startApp()">Verder →</button>
+    <div class="existing-block" id="existing-block" style="display:none">
+      <p>Of kies je naam:</p>
+      <div class="name-chips" id="name-chips"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="app">
+  <header>
+    <div class="header-inner">
+      <div class="header-title"><span class="flag">🇭🇺</span> Hongarije 2027</div>
+      <div class="user-pill">
+        <div class="user-avatar" id="hdr-av">?</div>
+        <span class="user-name" id="hdr-name">—</span>
+        <span class="admin-badge" id="hdr-admin">👑 beheerder</span>
+        <button class="switch-btn" onclick="switchUser()">wissel</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="tabs">
+    <div class="tabs-inner">
+      <button class="tab-btn active" onclick="showTab('wishlist',this)">🏖️ Activiteiten</button>
+      <button class="tab-btn" onclick="showTab('itinerary',this)">🍽️ Eten</button>
+      <button class="tab-btn" onclick="showTab('packing',this)">🧳 Valies</button>
+      <button class="tab-btn" onclick="showTab('shopping',this)">🛒 Boodschappen</button>
+      <button class="tab-btn" onclick="showTab('info',this)">📌 Info</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- ACTIVITEITEN -->
+    <div id="tab-wishlist" class="tab-panel active">
+      <div class="section-top">
+        <h2>Activiteiten</h2>
+        <button class="btn-add" onclick="openModal('wishlist')">+ Activiteit toevoegen</button>
+      </div>
+      <p class="section-desc">Iedereen kan activiteiten toevoegen en stemmen. Sorteer op populariteit.</p>
+      <div id="wishlist-list" class="cards-grid"></div>
+    </div>
+
+    <!-- ETEN -->
+    <div id="tab-itinerary" class="tab-panel">
+      <div class="section-top">
+        <h2>Eten</h2>
+        <span id="itinerary-add-btn"></span>
+      </div>
+      <p class="section-desc">Iedereen kan eetideeën toevoegen en stemmen. Kies een categorie: zelf koken, aan het meer of op restaurant.</p>
+      <div id="itinerary-days"></div>
+    </div>
+
+    <!-- VALIES -->
+    <div id="tab-packing" class="tab-panel">
+      <div class="section-top">
+        <h2>Valies</h2>
+      </div>
+      <p class="section-desc">Iedereen ziet alleen zijn eigen valies. De essentials staan standaard klaar, extra items blijven privé per profiel.</p>
+      <div id="packing-cols" class="packing-cols"></div>
+    </div>
+
+    <!-- BOODSCHAPPEN -->
+    <div id="tab-shopping" class="tab-panel">
+      <div class="section-top">
+        <h2>Boodschappen</h2>
+        <button class="btn-add" onclick="openModal('shopping')">+ Boodschap toevoegen</button>
+      </div>
+      <p class="section-desc">Wat wil je graag eten of drinken? Voeg hier je favorieten toe, iedereen kan het zien en vinken.</p>
+      <div id="shopping-list"></div>
+    </div>
+
+    <!-- INFO -->
+    <div id="tab-info" class="tab-panel">
+      <div class="section-top">
+        <h2>Praktische info</h2>
+        <span id="info-add-btn"></span>
+      </div>
+      <p class="section-desc">Verblijf, vignetten, valuta, alleen de beheerder voegt dit toe.</p>
+      <div id="info-list" class="info-grid"></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- MODALS -->
+
+<!-- Activiteiten -->
+<div class="modal-overlay" id="modal-wishlist">
+  <div class="modal">
+    <h3>🏖️ Activiteit toevoegen</h3>
+    <div class="form-group"><label>Wat wil je doen?</label>
+      <input type="text" id="w-title" placeholder="bv. Rondvaart op de Donau" /></div>
+    <div class="form-group"><label>Uitleg (optioneel)</label>
+      <textarea id="w-desc" placeholder="Waarom wil je dit? Extra info…"></textarea></div>
+    <div class="form-group"><label>Link (optioneel)</label>
+      <input type="url" id="w-link" placeholder="https://" /></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('wishlist')">Annuleer</button>
+      <button class="btn-save" onclick="saveWishlist()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Eten -->
+<div class="modal-overlay" id="modal-itinerary">
+  <div class="modal">
+    <h3>🍽️ Eetidee toevoegen</h3>
+    <div class="form-group"><label>Categorie</label>
+      <select id="i-cat">
+        <option value="zelf-koken">Zelf koken</option>
+        <option value="aan-het-meer">Aan het meer</option>
+        <option value="op-restaurant">Op restaurant</option>
+      </select></div>
+    <div class="form-group"><label>Wat wil je eten?</label>
+      <input type="text" id="i-title" placeholder="bv. Goulash, barbecue, pizza..." /></div>
+    <div class="form-group"><label>Uitleg (optioneel)</label>
+      <textarea id="i-desc" placeholder="Waarom dit? Extra info, suggesties, ingrediënten…"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('itinerary')">Annuleer</button>
+      <button class="btn-save" onclick="saveItinerary()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<!-- Valies -->
+<div class="modal-overlay" id="modal-packing">
+  <div class="modal">
+    <h3>🧳 Valiesitem toevoegen</h3>
+    <div class="form-group"><label>Item</label>
+      <input type="text" id="p-title" placeholder="bv. Zonnebrandcrème, adapter…" /></div>
+    <div class="form-group"><label>Categorie</label>
+      <select id="p-cat">
+        <option>Essentieel</option>
+        <option>Kleding</option>
+        <option>Documenten</option>
+        <option>Spullen & activiteiten</option>
+        <option>Eten & snacks</option>
+        <option>Apotheek & gezondheid</option>
+        <option>Overige</option>
+      </select></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('packing')">Annuleer</button>
+      <button class="btn-save" onclick="savePacking()">Toevoegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Gemeenschappelijke valies -->
+<div class="modal-overlay" id="modal-shared-pack">
+  <div class="modal">
+    <h3>🌍 Gemeenschappelijk valiesitem</h3>
+    <div class="form-group"><label>Item</label>
+      <input type="text" id="sp-title" placeholder="bv. Wasrek, wasmiddel, extra wc-papier…" /></div>
+    <div class="form-group"><label>Opmerking (optioneel)</label>
+      <input type="text" id="sp-note" placeholder="bv. 1x, compact, grote verpakking…" /></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('shared-pack')">Annuleer</button>
+      <button class="btn-save" onclick="saveSharedPacking()">Toevoegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Boodschappen -->
+<div class="modal-overlay" id="modal-shopping">
+  <div class="modal">
+    <h3>🛒 Boodschap toevoegen</h3>
+    <div class="form-group"><label>Wat wil je?</label>
+      <input type="text" id="s-title" placeholder="bv. Melk, bier, fruit, chocolade…" /></div>
+    <div class="form-group"><label>Hoeveelheid / Merk (optioneel)</label>
+      <input type="text" id="s-desc" placeholder="bv. 2kg, 6-pack, …" /></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('shopping')">Annuleer</button>
+      <button class="btn-save" onclick="saveShopping()">Toevoegen</button>
+    </div>
+  </div>
+</div>
+
+<!-- Info (admin only) -->
+<div class="modal-overlay" id="modal-info">
+  <div class="modal">
+    <h3>📌 Info toevoegen</h3>
+    <div class="form-group"><label>Categorie</label>
+      <select id="n-cat">
+        <option>Verblijf</option>
+        <option>Vervoer</option>
+        <option>Reservatie</option>
+        <option>Adres</option>
+        <option>Praktisch</option>
+        <option>Contact</option>
+        <option>Overige</option>
+      </select></div>
+    <div class="form-group"><label>Titel</label>
+      <input type="text" id="n-title" placeholder="bv. Airbnb adres, treintickets…" /></div>
+    <div class="form-group"><label>Inhoud</label>
+      <textarea id="n-body" placeholder="Adres, bevestigingscode, tijdstip…" style="min-height:110px"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal('info')">Annuleer</button>
+      <button class="btn-save" onclick="saveInfo()">Opslaan</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
