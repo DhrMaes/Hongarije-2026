@@ -6,9 +6,9 @@
       "type": "coreclr",
       "request": "launch",
       "preLaunchTask": "build",
-      "program": "/workspace/backend/HongarijePlanner.Api/bin/Debug/net10.0/HongarijePlanner.Api.dll",
+      "program": "/workspace/backend/bin/Debug/net10.0/HongarijePlanner.Api.dll",
       "args": [],
-      "cwd": "/workspace/backend/HongarijePlanner.Api",
+      "cwd": "/workspace/backend",
       "stopAtEntry": false,
       "env": {
         "ASPNETCORE_ENVIRONMENT": "Development",
@@ -16,7 +16,7 @@
         "ConnectionStrings__DefaultConnection": "Host=db;Port=5432;Database=hongarije;Username=hongarije;Password=hongarije_dev"
       },
       "sourceFileMap": {
-        "/Views": "${workspaceFolder}/backend/HongarijePlanner.Api"
+        "/Views": "${workspaceFolder}/backend"
       }
     }
   ]

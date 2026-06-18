@@ -14,7 +14,7 @@ public class ExchangeRateController(IHttpClientFactory httpClientFactory) : Cont
     {
         // Cache for 1 hour to avoid hammering the external API
         if ((DateTime.UtcNow - _cache.FetchedAt).TotalHours < 1)
-            return Ok(new ExchangeRateResponse(_cache.Rate, cached: true));
+            return Ok(new ExchangeRateResponse(_cache.Rate, true));
 
         try
         {
@@ -24,11 +24,11 @@ public class ExchangeRateController(IHttpClientFactory httpClientFactory) : Cont
             using var doc = JsonDocument.Parse(json);
             var rate = doc.RootElement.GetProperty("rates").GetProperty("HUF").GetDouble();
             _cache = (rate, DateTime.UtcNow);
-            return Ok(new ExchangeRateResponse(rate, cached: false));
+            return Ok(new ExchangeRateResponse(rate, false));
         }
         catch
         {
-            return Ok(new ExchangeRateResponse(_cache.Rate, cached: true));
+            return Ok(new ExchangeRateResponse(_cache.Rate, true));
         }
     }
 

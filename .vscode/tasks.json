@@ -7,7 +7,7 @@
       "command": "dotnet",
       "args": [
         "build",
-        "/workspace/backend/HongarijePlanner.Api/HongarijePlanner.Api.csproj",
+      "/workspace/backend/HongarijePlanner.Api.csproj",
         "/property:GenerateFullPaths=true",
         "/consoleloggerparameters:NoSummary"
       ],
@@ -19,7 +19,7 @@
       "label": "▶️ Run API locally (for debugging)",
       "detail": "Use this when you want to attach the VS Code debugger. Stop the 'api' Docker service first.",
       "type": "shell",
-      "command": "dotnet run --project /workspace/backend/HongarijePlanner.Api/HongarijePlanner.Api.csproj",
+      "command": "dotnet run --project /workspace/backend/HongarijePlanner.Api.csproj",
       "isBackground": true,
       "presentation": {
         "echo": true,

@@ -4,10 +4,9 @@ EXPOSE 8080
 
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /src
-COPY ["HongarijePlanner.Api/HongarijePlanner.Api.csproj", "HongarijePlanner.Api/"]
-RUN dotnet restore "HongarijePlanner.Api/HongarijePlanner.Api.csproj"
+COPY ["HongarijePlanner.Api.csproj", "."]
+RUN dotnet restore "HongarijePlanner.Api.csproj"
 COPY . .
-WORKDIR "/src/HongarijePlanner.Api"
 RUN dotnet build "HongarijePlanner.Api.csproj" -c Release -o /app/build
 
 FROM build AS publish

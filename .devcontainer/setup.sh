@@ -8,7 +8,7 @@ echo "╚═══════════════════════�
 echo ""
 
 echo "📦  Restoring .NET packages (shared with api service)..."
-cd /workspace/backend/HongarijePlanner.Api
+cd /workspace/backend
 dotnet restore --verbosity quiet
 
 echo "🔨  Building project (catching errors early)..."
