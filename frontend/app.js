@@ -96,6 +96,14 @@ function pickName(n) {
 async function startApp() {
   const val = document.getElementById('name-input').value.trim();
   if (!val) { document.getElementById('name-input').focus(); return; }
+
+  // If this user has a PIN set, verify it before proceeding
+  const existingUser = allUsers.find(u => u.name === val);
+  if (existingUser?.hasPin) {
+    const verified = await promptPin(val);
+    if (!verified) return;
+  }
+
   const btn = document.querySelector('.btn-go');
   btn.disabled = true;
   btn.textContent = 'Even wachten…';
@@ -131,6 +139,7 @@ function updateHeader() {
   av.textContent = ini(me);
   av.classList.toggle('is-admin', isAdmin());
   document.getElementById('hdr-admin').style.display = isAdmin() ? 'inline' : 'none';
+  document.getElementById('hdr-pin-btn').style.display = isAdmin() ? 'inline' : 'none';
   document.getElementById('itinerary-add-btn').innerHTML =
     `<button class="btn-add" onclick="openModal('itinerary')">+ Eetidee toevoegen</button>`;
   document.getElementById('info-add-btn').innerHTML = isAdmin()
@@ -187,6 +196,95 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape')
     document.querySelectorAll('.modal-overlay.open').forEach(o => closeModal(o.id.replace('modal-', '')));
 });
+
+// ── PIN entry (wissel to protected account) ────────────────────────────────
+
+let _pinEntryResolve = null;
+
+function promptPin(name) {
+  return new Promise(resolve => {
+    _pinEntryResolve = resolve;
+    document.getElementById('pin-entry-name').textContent = name;
+    document.getElementById('pin-entry-input').value = '';
+    document.getElementById('pin-entry-error').style.display = 'none';
+    document.getElementById('modal-pin-entry').classList.add('open');
+    setTimeout(() => document.getElementById('pin-entry-input').focus(), 100);
+  });
+}
+
+async function submitPinEntry() {
+  const name = document.getElementById('pin-entry-name').textContent;
+  const pin = document.getElementById('pin-entry-input').value;
+  try {
+    await apiFetch(`/users/${encodeURIComponent(name)}/verify-pin`, {
+      method: 'POST', body: { pin }
+    });
+    document.getElementById('modal-pin-entry').classList.remove('open');
+    if (_pinEntryResolve) { _pinEntryResolve(true); _pinEntryResolve = null; }
+  } catch {
+    document.getElementById('pin-entry-error').style.display = 'block';
+    document.getElementById('pin-entry-input').select();
+  }
+}
+
+function cancelPinEntry() {
+  document.getElementById('modal-pin-entry').classList.remove('open');
+  if (_pinEntryResolve) { _pinEntryResolve(false); _pinEntryResolve = null; }
+}
+
+// ── PIN manage (set / change / remove own PIN) ─────────────────────────────
+
+function openPinManage() {
+  const user = allUsers.find(u => u.name === me);
+  const hasPin = user?.hasPin ?? false;
+  document.getElementById('pin-manage-title').textContent = hasPin ? 'PIN wijzigen' : 'PIN instellen';
+  document.getElementById('pin-current-group').style.display = hasPin ? 'block' : 'none';
+  document.getElementById('pin-remove-btn').style.display = hasPin ? 'inline' : 'none';
+  document.getElementById('pin-current').value = '';
+  document.getElementById('pin-new').value = '';
+  document.getElementById('pin-confirm').value = '';
+  document.getElementById('pin-manage-error').style.display = 'none';
+  document.getElementById('modal-pin-manage').classList.add('open');
+}
+
+async function savePin() {
+  const currentPin = document.getElementById('pin-current').value;
+  const newPin = document.getElementById('pin-new').value;
+  const confirmPin = document.getElementById('pin-confirm').value;
+  const errEl = document.getElementById('pin-manage-error');
+  errEl.style.display = 'none';
+
+  if (newPin.length < 4) { errEl.textContent = 'PIN moet minimaal 4 tekens zijn.'; errEl.style.display = 'block'; return; }
+  if (newPin !== confirmPin) { errEl.textContent = 'PINs komen niet overeen.'; errEl.style.display = 'block'; return; }
+
+  const user = allUsers.find(u => u.name === me);
+  const body = { newPin };
+  if (user?.hasPin) body.currentPin = currentPin;
+
+  try {
+    await apiFetch(`/users/${encodeURIComponent(me)}/pin`, { method: 'POST', body });
+    closeModal('pin-manage');
+    allUsers = await apiFetch('/users') ?? allUsers;
+    showToast('PIN opgeslagen ✓');
+  } catch (e) {
+    errEl.textContent = e.message || 'Fout bij opslaan PIN.';
+    errEl.style.display = 'block';
+  }
+}
+
+async function removePin() {
+  const pin = document.getElementById('pin-current').value;
+  const errEl = document.getElementById('pin-manage-error');
+  try {
+    await apiFetch(`/users/${encodeURIComponent(me)}/pin`, { method: 'DELETE', body: { pin } });
+    closeModal('pin-manage');
+    allUsers = await apiFetch('/users') ?? allUsers;
+    showToast('PIN verwijderd.');
+  } catch (e) {
+    errEl.textContent = e.message || 'Verkeerde PIN.';
+    errEl.style.display = 'block';
+  }
+}
 
 /* ── WISHLIST ── */
 async function saveWishlist() {

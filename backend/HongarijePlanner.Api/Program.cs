@@ -27,6 +27,8 @@ using (var scope = app.Services.CreateScope())
     dbContext.Database.EnsureCreated();
     await dbContext.Database.ExecuteSqlRawAsync(
         "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_admin BOOLEAN NOT NULL DEFAULT FALSE");
+    await dbContext.Database.ExecuteSqlRawAsync(
+        "ALTER TABLE users ADD COLUMN IF NOT EXISTS pin_hash TEXT");
     await DataSeeder.SeedGlobalDataAsync(dbContext);
 }
 
