@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using HongarijePlanner.Api.Data;
 using HongarijePlanner.Api.Models;
+using HongarijePlanner.Api.Requests;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -120,12 +121,4 @@ public class WishlistController(AppDbContext dbContext) : ControllerBase
         public string Author { get; set; } = string.Empty;
     }
 
-    public class VoteRequest
-    {
-        [Required]
-        public string User { get; set; } = string.Empty;
-
-        [Required]
-        public string Direction { get; set; } = string.Empty;
-    }
 }

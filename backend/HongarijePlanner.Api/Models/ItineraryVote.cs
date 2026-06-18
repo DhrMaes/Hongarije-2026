@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace HongarijePlanner.Api.Models;
 
 public class ItineraryVote
@@ -8,5 +10,6 @@ public class ItineraryVote
 
     public string Direction { get; set; } = string.Empty;
 
+    [JsonIgnore]
     public ItineraryItem? Item { get; set; }
 }

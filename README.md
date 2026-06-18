@@ -169,13 +169,73 @@ const VIGNET_HU  = '...';        // Hungarian toll vignette purchase link
 
 ## Deploying (Portainer)
 
-1. Make sure Docker is running on the server and Portainer is set up.
-2. In Portainer: go to **Stacks → Add stack**.
-3. Paste the contents of `docker-compose.yml`, or upload the file directly.
-4. Click **Deploy the stack**.
+### Required environment variables
 
-The app will be available on port **3000** (frontend) and **5000** (API).  
-The database data is stored in a Docker volume and survives restarts and redeployments.
+The app **will not start** without these set. Never commit real values to git.
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `DB_PASSWORD` | PostgreSQL password — pick something strong | `correct-horse-battery-staple` |
+| `APP_PORT` | Host port the app is served on | `3000` |
+
+### Steps
+
+1. Push your repo to GitHub (or copy the files to your server).
+2. In Portainer → **Stacks → Add stack**.
+3. Choose **Repository** and point it at your GitHub repo, or use **Web editor** and paste `docker-compose.yml`.
+4. Scroll down to **Environment variables** and add:
+   - `DB_PASSWORD` → your chosen password
+   - `APP_PORT` → e.g. `3000` (or `80` to serve on the default HTTP port)
+5. Click **Deploy the stack**.
+
+The app will be available at `http://<your-server-ip>:<APP_PORT>`.  
+Database data is stored in a Docker volume and survives restarts and redeployments.
+
+> **Reverse proxy tip:** if you run Nginx Proxy Manager or Traefik in front, set `APP_PORT` to any free internal port and let the proxy handle the public domain + HTTPS.
+
+---
+
+## Authentik SSO (optional)
+
+When the app is behind Authentik forward auth, users are logged in automatically — no login screen needed. The "wissel" button still lets someone switch to another account manually.
+
+### How it works
+
+Authentik injects `X-authentik-username` into every proxied request. The app reads this header at `GET /api/auth/me` and logs the user in automatically.
+
+### Setup in Authentik
+
+1. Create a **Proxy Provider** in Authentik:
+   - Mode: **Forward auth (single application)**
+   - External host: your public URL (e.g. `https://hongarije.example.com`)
+2. Create an **Application** linked to that provider.
+3. Assign the application to the users/group who should have access.
+
+### Setup in Nginx Proxy Manager
+
+1. Add a new Proxy Host pointing to `http://<docker-host>:<APP_PORT>`.
+2. Under **Advanced**, add the Authentik forward auth snippet:
+   ```nginx
+   auth_request /outpost.goauthentik.io/auth/nginx;
+   error_page 401 = @goauthentik_proxy_signin;
+   auth_request_set $auth_cookie $upstream_http_set_cookie;
+   add_header Set-Cookie $auth_cookie;
+   auth_request_set $authentik_username $upstream_http_x_authentik_username;
+   proxy_set_header X-authentik-username $authentik_username;
+
+   location /outpost.goauthentik.io {
+       proxy_pass https://<your-authentik-host>/outpost.goauthentik.io;
+       proxy_set_header Host <your-authentik-host>;
+   }
+
+   location @goauthentik_proxy_signin {
+       internal;
+       return 302 /outpost.goauthentik.io/start?rd=$scheme://$http_host$request_uri;
+   }
+   ```
+3. Replace `<your-authentik-host>` with your Authentik domain.
+
+> If the `X-authentik-username` header is absent (e.g. in local dev), the app falls back to the normal login screen automatically.
 
 ---
 
@@ -215,3 +275,17 @@ cd /workspace/backend/HongarijePlanner.Api
 dotnet ef migrations add DescribeYourChange
 dotnet ef database update
 ```
+
+### "Error response from daemon: accessing specified distro mount service ... ubuntu.sock"
+
+This means Docker Desktop lost its connection to the Ubuntu WSL distro. Fix it in three steps:
+
+1. **Shut down WSL** — open PowerShell and run:
+   ```
+   wsl --shutdown
+   ```
+2. **Restart Docker Desktop** — right-click the whale icon in the system tray → *Quit Docker Desktop*, then reopen it and wait for it to fully start (the whale icon stops animating).
+
+3. **Re-enable WSL integration** — Docker Desktop → Settings → Resources → WSL Integration → make sure *Ubuntu* is checked → click *Apply & Restart*.
+
+Then try *Dev Containers: Reopen in Container* again.

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace HongarijePlanner.Api.Models;
 
 public class WishlistVote
@@ -8,5 +10,6 @@ public class WishlistVote
 
     public string Direction { get; set; } = string.Empty;
 
+    [JsonIgnore]
     public WishlistItem? Item { get; set; }
 }

@@ -1,6 +1,7 @@
 using System.ComponentModel.DataAnnotations;
 using HongarijePlanner.Api.Data;
 using HongarijePlanner.Api.Models;
+using HongarijePlanner.Api.Requests;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -11,23 +12,19 @@ namespace HongarijePlanner.Api.Controllers;
 public class ItineraryController(AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<ItineraryCategoryGroup>>> GetItinerary()
+    public async Task<ActionResult<IEnumerable<ItineraryItem>>> GetItinerary()
     {
         var items = await dbContext.ItineraryItems
             .Include(item => item.Votes)
             .ToListAsync();
 
-        var groupedItems = items
-            .GroupBy(item => item.Category)
-            .OrderBy(group => group.Key)
-            .Select(group => new ItineraryCategoryGroup(
-                group.Key,
-                group.OrderByDescending(GetNetScore)
-                    .ThenByDescending(item => item.CreatedAt)
-                    .ToList()))
+        var orderedItems = items
+            .OrderBy(item => item.Category)
+            .ThenByDescending(GetNetScore)
+            .ThenByDescending(item => item.CreatedAt)
             .ToList();
 
-        return Ok(groupedItems);
+        return Ok(orderedItems);
     }
 
     [HttpPost]
@@ -112,8 +109,6 @@ public class ItineraryController(AppDbContext dbContext) : ControllerBase
     private static bool IsValidDirection(string direction) =>
         direction is "up" or "down";
 
-    public record ItineraryCategoryGroup(string Category, List<ItineraryItem> Items);
-
     public class CreateItineraryItemRequest
     {
         [Required]
@@ -128,12 +123,4 @@ public class ItineraryController(AppDbContext dbContext) : ControllerBase
         public string Author { get; set; } = string.Empty;
     }
 
-    public class VoteRequest
-    {
-        [Required]
-        public string User { get; set; } = string.Empty;
-
-        [Required]
-        public string Direction { get; set; } = string.Empty;
-    }
 }

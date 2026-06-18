@@ -2,7 +2,6 @@
 // In the dev container (nginx on :3000) and in Docker, /api is proxied by nginx.
 // When opening index.html directly via Live Server (:5500), call the API directly.
 const API = window.location.port === '5500' ? 'http://localhost:5000/api' : '/api';
-const ADMIN_NAME = 'Yana';
 
 const MAPS_LINK  = 'https://maps.app.goo.gl/TnpmEyBhF4tUNtbU7';
 const HOUSE_LINK = 'https://www.interhome.be/rental/9fef3e704583bf14177d5eae79bb0efd';
@@ -17,6 +16,9 @@ const FOOD_CATEGORIES = [
 ];
 
 let me = null;
+let meIsAdmin = false;
+let allUsers = [];
+let skipAutoLogin = false;
 
 /* ── HELPERS ── */
 function esc(s) {
@@ -27,39 +29,63 @@ function ini(n) {
   return (n ?? '?').split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 }
 
-function isAdmin() { return me === ADMIN_NAME; }
+function isAdmin() { return meIsAdmin; }
+function isAdminUser(name) { return allUsers.find(u => u.name === name)?.isAdmin ?? false; }
 
 function foodCatLabel(val) {
   return FOOD_CATEGORIES.find(c => c.value === val)?.label ?? FOOD_CATEGORIES[0].label;
 }
 
-function toast(msg) {
+function toast(msg, durationMs = 2200) {
   const t = document.getElementById('toast');
   t.textContent = msg;
   t.classList.add('show');
-  setTimeout(() => t.classList.remove('show'), 2200);
+  clearTimeout(t._timer);
+  t._timer = setTimeout(() => t.classList.remove('show'), durationMs);
+}
+
+function toastError(msg) {
+  toast('⚠️ ' + msg, 5000);
 }
 
 /* ── API ── */
 async function apiFetch(path, options = {}) {
-  const res = await fetch(API + path, {
-    headers: { 'Content-Type': 'application/json' },
-    ...options,
-    body: options.body ? JSON.stringify(options.body) : undefined,
-  });
-  if (!res.ok) throw new Error(`API error ${res.status}: ${path}`);
-  if (res.status === 204) return null;
-  return res.json();
+  let res;
+  try {
+    res = await fetch(API + path, {
+      headers: { 'Content-Type': 'application/json' },
+      ...options,
+      body: options.body ? JSON.stringify(options.body) : undefined,
+    });
+  } catch (err) {
+    throw new Error(`Netwerkfout — kan de server niet bereiken (${path}): ${err.message}`);
+  }
+  if (!res.ok) {
+    throw new Error(`Serverfout ${res.status} op ${path}`);
+  }
+  if (res.status === 204 || res.headers.get('content-length') === '0') return null;
+  const text = await res.text();
+  return text ? JSON.parse(text) : null;
+}
+
+function renderError(el, err) {
+  el.innerHTML = `<div class="empty"><p>⚠️ ${esc(err.message)}</p></div>`;
+  console.error(err);
 }
 
 /* ── NICKNAME ── */
 async function renderChips() {
-  const users = await apiFetch('/users');
+  try {
+    allUsers = await apiFetch('/users');
+  } catch (err) {
+    console.warn('Kon bestaande namen niet laden:', err.message);
+    return;
+  }
   const bl = document.getElementById('existing-block');
   const ch = document.getElementById('name-chips');
-  if (!users.length) { bl.style.display = 'none'; return; }
+  if (!allUsers.length) { bl.style.display = 'none'; return; }
   bl.style.display = 'block';
-  ch.innerHTML = users.map(u => `<span class="name-chip" onclick="pickName('${esc(u)}')">${esc(u)}</span>`).join('');
+  ch.innerHTML = allUsers.map(u => `<span class="name-chip" onclick="pickName('${esc(u.name)}')">${esc(u.name)}</span>`).join('');
 }
 
 function pickName(n) {
@@ -70,8 +96,19 @@ function pickName(n) {
 async function startApp() {
   const val = document.getElementById('name-input').value.trim();
   if (!val) { document.getElementById('name-input').focus(); return; }
-  me = val;
-  await apiFetch('/users', { method: 'POST', body: { name: val } });
+  const btn = document.querySelector('.btn-go');
+  btn.disabled = true;
+  btn.textContent = 'Even wachten…';
+  try {
+    me = val;
+    const user = await apiFetch('/users', { method: 'POST', body: { name: val } });
+    meIsAdmin = user.isAdmin ?? false;
+  } catch {
+    me = null;
+    btn.disabled = false;
+    btn.textContent = 'Verder →';
+    return;
+  }
   document.getElementById('nickname-screen').style.display = 'none';
   document.getElementById('app').style.display = 'block';
   updateHeader();
@@ -80,6 +117,8 @@ async function startApp() {
 
 function switchUser() {
   me = null;
+  meIsAdmin = false;
+  skipAutoLogin = true;
   document.getElementById('app').style.display = 'none';
   document.getElementById('nickname-screen').style.display = 'flex';
   document.getElementById('name-input').value = '';
@@ -122,6 +161,25 @@ function closeModal(t) {
   });
 }
 
+function confirmDialog(message) {
+  return new Promise(resolve => {
+    document.getElementById('confirm-msg').textContent = message;
+    openModal('confirm');
+    const ok     = document.getElementById('confirm-ok');
+    const cancel = document.getElementById('confirm-cancel');
+    function cleanup(result) {
+      closeModal('confirm');
+      ok.removeEventListener('click', onOk);
+      cancel.removeEventListener('click', onCancel);
+      resolve(result);
+    }
+    function onOk()     { cleanup(true);  }
+    function onCancel() { cleanup(false); }
+    ok.addEventListener('click', onOk);
+    cancel.addEventListener('click', onCancel);
+  });
+}
+
 document.querySelectorAll('.modal-overlay').forEach(o => {
   o.addEventListener('click', e => { if (e.target === o) closeModal(o.id.replace('modal-', '')); });
 });
@@ -148,8 +206,9 @@ async function vote(id, dir) {
   await renderWishlist();
 }
 
-async function delWishlist(id) {
-  if (!isAdmin()) return;
+async function delWishlist(id, author) {
+  if (!isAdmin() && author !== me) return;
+  if (!await confirmDialog('Weet je zeker dat je dit wilt verwijderen?')) return;
   await apiFetch(`/wishlist/${id}`, { method: 'DELETE' });
   await renderWishlist();
   toast('Verwijderd.');
@@ -157,23 +216,30 @@ async function delWishlist(id) {
 
 async function renderWishlist() {
   const el = document.getElementById('wishlist-list');
-  const items = await apiFetch('/wishlist');
+  let items;
+  try {
+    items = await apiFetch('/wishlist');
+  } catch (err) {
+    renderError(el, err);
+    return;
+  }
   if (!items.length) {
     el.innerHTML = `<div class="empty"><div class="ei">🏖️</div><p>Nog geen activiteiten, voeg de eerste toe!</p></div>`;
     return;
   }
   el.innerHTML = items.map(item => {
     const ups      = (item.votes ?? []).filter(v => v.direction === 'up');
+    const downs    = (item.votes ?? []).filter(v => v.direction === 'down');
     const upNames  = ups.map(v => v.userName).join(', ');
     const myVote   = (item.votes ?? []).find(v => v.userName === me)?.direction;
-    const isAdm    = item.author === ADMIN_NAME;
+    const isAdm    = isAdminUser(item.author);
     return `<div class="card">
       <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
         <div style="flex:1">
           <div class="card-title">${esc(item.title)}</div>
           ${item.description ? `<div class="card-desc">${esc(item.description)}</div>` : ''}
         </div>
-        ${isAdmin() ? `<button class="btn-icon del" onclick="delWishlist('${item.id}')" title="Verwijderen">✕</button>` : ''}
+        ${isAdmin() || item.author === me ? `<button class="btn-icon del" onclick="delWishlist('${item.id}','${esc(item.author)}')" title="Verwijderen">✕</button>` : ''}
       </div>
       <div class="card-meta">
         <span class="author-tag"><span class="av${isAdm ? ' admin' : ''}">${ini(item.author)}</span>${esc(item.author)}</span>
@@ -181,7 +247,7 @@ async function renderWishlist() {
       </div>
       <div class="vote-row">
         <button class="btn-vote${myVote === 'up' ? ' yes' : ''}" onclick="vote('${item.id}','up')">👍 Ja! ${ups.length || ''}</button>
-        <button class="btn-vote${myVote === 'down' ? ' no' : ''}" onclick="vote('${item.id}','down')">👎 Nee</button>
+        <button class="btn-vote${myVote === 'down' ? ' no' : ''}" onclick="vote('${item.id}','down')">👎 Nee ${downs.length || ''}</button>
         ${upNames ? `<span class="vote-who">✓ ${esc(upNames)}</span>` : ''}
       </div>
     </div>`;
@@ -206,8 +272,9 @@ async function voteItinerary(id, dir) {
   await renderItinerary();
 }
 
-async function delItinerary(id) {
-  if (!isAdmin()) return;
+async function delItinerary(id, author) {
+  if (!isAdmin() && author !== me) return;
+  if (!await confirmDialog('Weet je zeker dat je dit wilt verwijderen?')) return;
   await apiFetch(`/itinerary/${id}`, { method: 'DELETE' });
   await renderItinerary();
   toast('Verwijderd.');
@@ -215,7 +282,13 @@ async function delItinerary(id) {
 
 async function renderItinerary() {
   const el = document.getElementById('itinerary-days');
-  const items = await apiFetch('/itinerary');
+  let items;
+  try {
+    items = await apiFetch('/itinerary');
+  } catch (err) {
+    renderError(el, err);
+    return;
+  }
   if (!items.length) {
     el.innerHTML = `<div class="empty"><div class="ei">🍽️</div><p>Nog geen eetideeën, voeg de eerste toe!</p></div>`;
     return;
@@ -233,16 +306,17 @@ async function renderItinerary() {
       <div class="cards-grid">
         ${catItems.map(item => {
           const ups     = (item.votes ?? []).filter(v => v.direction === 'up');
+          const downs   = (item.votes ?? []).filter(v => v.direction === 'down');
           const upNames = ups.map(v => v.userName).join(', ');
           const myVote  = (item.votes ?? []).find(v => v.userName === me)?.direction;
-          const isAdm   = item.author === ADMIN_NAME;
+          const isAdm   = isAdminUser(item.author);
           return `<div class="card">
             <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
               <div style="flex:1">
                 <div class="card-title">${esc(item.title)}</div>
                 ${item.description ? `<div class="card-desc">${esc(item.description)}</div>` : ''}
               </div>
-              ${isAdmin() ? `<button class="btn-icon del" onclick="delItinerary('${item.id}')" title="Verwijderen">✕</button>` : ''}
+              ${isAdmin() || item.author === me ? `<button class="btn-icon del" onclick="delItinerary('${item.id}','${esc(item.author)}')" title="Verwijderen">✕</button>` : ''}
             </div>
             <div class="card-meta">
               <span class="category-tag">${esc(foodCatLabel(item.category))}</span>
@@ -250,7 +324,7 @@ async function renderItinerary() {
             </div>
             <div class="vote-row">
               <button class="btn-vote${myVote === 'up' ? ' yes' : ''}" onclick="voteItinerary('${item.id}','up')">👍 Ja! ${ups.length || ''}</button>
-              <button class="btn-vote${myVote === 'down' ? ' no' : ''}" onclick="voteItinerary('${item.id}','down')">👎 Nee</button>
+              <button class="btn-vote${myVote === 'down' ? ' no' : ''}" onclick="voteItinerary('${item.id}','down')">👎 Nee ${downs.length || ''}</button>
               ${upNames ? `<span class="vote-who">✓ ${esc(upNames)}</span>` : ''}
             </div>
           </div>`;
@@ -279,7 +353,7 @@ async function togglePack(id) {
 }
 
 async function delPack(id, title) {
-  if (!confirm(`Weet je zeker dat je "${title}" wilt verwijderen?`)) return;
+  if (!await confirmDialog(`Weet je zeker dat je "${title}" wilt verwijderen?`)) return;
   await apiFetch(`/packing/${id}`, { method: 'DELETE' });
   await renderPacking();
   toast('Verwijderd.');
@@ -303,7 +377,7 @@ async function toggleSharedPack(id) {
 }
 
 async function delSharedPack(id, title) {
-  if (!confirm(`Weet je zeker dat je "${title}" wilt verwijderen?`)) return;
+  if (!await confirmDialog(`Weet je zeker dat je "${title}" wilt verwijderen?`)) return;
   await apiFetch(`/packing/shared/${id}`, { method: 'DELETE' });
   await renderPacking();
   toast('Verwijderd.');
@@ -311,10 +385,16 @@ async function delSharedPack(id, title) {
 
 async function renderPacking() {
   const el = document.getElementById('packing-cols');
-  const [myItems, sharedItems] = await Promise.all([
-    apiFetch(`/packing?user=${encodeURIComponent(me)}`),
-    apiFetch('/packing/shared'),
-  ]);
+  let myItems, sharedItems;
+  try {
+    [myItems, sharedItems] = await Promise.all([
+      apiFetch(`/packing?user=${encodeURIComponent(me)}`),
+      apiFetch('/packing/shared'),
+    ]);
+  } catch (err) {
+    renderError(el, err);
+    return;
+  }
 
   const packed = myItems.filter(i => i.isPacked).length;
   const pct    = myItems.length ? Math.round(packed / myItems.length * 100) : 0;
@@ -391,8 +471,9 @@ async function toggleBought(id) {
   await renderShopping();
 }
 
-async function delShopping(id) {
-  if (!isAdmin()) return;
+async function delShopping(id, author) {
+  if (!isAdmin() && author !== me) return;
+  if (!await confirmDialog('Weet je zeker dat je dit wilt verwijderen?')) return;
   await apiFetch(`/shopping/${id}`, { method: 'DELETE' });
   await renderShopping();
   toast('Verwijderd.');
@@ -400,7 +481,13 @@ async function delShopping(id) {
 
 async function renderShopping() {
   const el = document.getElementById('shopping-list');
-  const items = await apiFetch('/shopping');
+  let items;
+  try {
+    items = await apiFetch('/shopping');
+  } catch (err) {
+    renderError(el, err);
+    return;
+  }
   if (!items.length) {
     el.innerHTML = `<div class="empty"><div class="ei">🛒</div><p>Nog geen boodschappen, voeg je favorieten toe!</p></div>`;
     return;
@@ -435,7 +522,7 @@ async function renderShopping() {
               <div class="shop-item-title">${esc(item.title)}</div>
               ${item.description ? `<div class="shop-item-qty">${esc(item.description)}</div>` : ''}
             </label>
-            ${isAdmin() ? `<button class="btn-icon del" onclick="delShopping('${item.id}')" style="width:22px;height:22px;font-size:.7rem">✕</button>` : ''}
+            ${isAdmin() || item.author === me ? `<button class="btn-icon del" onclick="delShopping('${item.id}','${esc(item.author)}')" style="width:22px;height:22px;font-size:.7rem">✕</button>` : ''}
           </div>`).join('')}
       </div>
     </div>`;
@@ -474,7 +561,13 @@ function initCurrencyCalc(elemId) {
 
 async function renderInfo() {
   const el = document.getElementById('info-list');
-  const items = await apiFetch('/info');
+  let items;
+  try {
+    items = await apiFetch('/info');
+  } catch (err) {
+    renderError(el, err);
+    return;
+  }
   if (!items.length) {
     el.innerHTML = `<div class="empty"><div class="ei">📌</div><p>${isAdmin() ? 'Voeg praktische info toe, slaapplaatsen, adressen, tijden…' : 'De beheerder voegt hier praktische info toe.'}</p></div>`;
     return;
@@ -538,4 +631,21 @@ async function renderAll() {
   ]);
 }
 
+async function tryAutoLogin() {
+  if (skipAutoLogin) return;
+  try {
+    const user = await apiFetch('/auth/me');
+    if (!user || !user.name) return;
+    me = user.name;
+    meIsAdmin = user.isAdmin ?? false;
+    document.getElementById('nickname-screen').style.display = 'none';
+    document.getElementById('app').style.display = 'block';
+    updateHeader();
+    await renderAll();
+  } catch {
+    // No Authentik header or API not reachable — fall through to login screen
+  }
+}
+
 renderChips();
+tryAutoLogin();

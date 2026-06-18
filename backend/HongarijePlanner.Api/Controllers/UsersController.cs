@@ -11,27 +11,50 @@ namespace HongarijePlanner.Api.Controllers;
 public class UsersController(AppDbContext dbContext) : ControllerBase
 {
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<string>>> GetUsers()
+    public async Task<ActionResult<IEnumerable<User>>> GetUsers()
     {
         var users = await dbContext.Users
             .OrderBy(user => user.Name)
-            .Select(user => user.Name)
             .ToListAsync();
 
         return Ok(users);
     }
 
     [HttpPost]
-    public async Task<IActionResult> UpsertUser([FromBody] UpsertUserRequest request)
+    public async Task<ActionResult<User>> UpsertUser([FromBody] UpsertUserRequest request)
     {
-        var exists = await dbContext.Users.AnyAsync(user => user.Name == request.Name);
-        if (!exists)
+        var user = await dbContext.Users.FindAsync(request.Name);
+        if (user is null)
         {
-            dbContext.Users.Add(new User { Name = request.Name });
+            user = new User { Name = request.Name, IsAdmin = false };
+            dbContext.Users.Add(user);
             await dbContext.SaveChangesAsync();
         }
 
-        return Ok();
+        await DataSeeder.SeedPackingForUserAsync(dbContext, request.Name);
+
+        return Ok(user);
+    }
+
+    [HttpDelete("{name}")]
+    public async Task<IActionResult> DeleteUser(string name)
+    {
+        var user = await dbContext.Users.FindAsync(name);
+        if (user is null) return NotFound();
+
+        dbContext.PackingItems.RemoveRange(
+            dbContext.PackingItems.Where(p => p.Owner == name));
+
+        dbContext.WishlistVotes.RemoveRange(
+            dbContext.WishlistVotes.Where(v => v.UserName == name));
+
+        dbContext.ItineraryVotes.RemoveRange(
+            dbContext.ItineraryVotes.Where(v => v.UserName == name));
+
+        dbContext.Users.Remove(user);
+        await dbContext.SaveChangesAsync();
+
+        return NoContent();
     }
 
     public class UpsertUserRequest

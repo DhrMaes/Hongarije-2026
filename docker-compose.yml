@@ -5,7 +5,7 @@ services:
     environment:
       POSTGRES_DB: hongarije
       POSTGRES_USER: hongarije
-      POSTGRES_PASSWORD: hongarije
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
@@ -23,9 +23,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Production
       ASPNETCORE_URLS: http://+:8080
       DOTNET_RUNNING_IN_CONTAINER: "true"
-      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=hongarije;Username=hongarije;Password=hongarije
-    ports:
-      - "5000:8080"
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=hongarije;Username=hongarije;Password=${DB_PASSWORD}
     depends_on:
       db:
         condition: service_healthy
@@ -36,7 +34,7 @@ services:
       dockerfile: Dockerfile
     restart: unless-stopped
     ports:
-      - "3000:80"
+      - "${APP_PORT:-3000}:80"
     depends_on:
       - backend
 

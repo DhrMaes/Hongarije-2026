@@ -6,8 +6,25 @@
     command: sleep infinity
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:5000
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=hongarije;Username=hongarije;Password=hongarije
+    depends_on:
+      db:
+        condition: service_healthy
+
+  api:
+    image: mcr.microsoft.com/dotnet/sdk:10.0
+    volumes:
+      - ..:/workspace:cached
+      - api-nuget:/root/.nuget/packages
+    working_dir: /workspace/backend/HongarijePlanner.Api
+    command: dotnet watch run --non-interactive --no-launch-profile
+    environment:
+      ASPNETCORE_ENVIRONMENT: Development
+      ASPNETCORE_URLS: http://+:5000
+      DOTNET_RUNNING_IN_CONTAINER: "true"
+      ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=hongarije;Username=hongarije;Password=hongarije
+    ports:
+      - "5000:5000"
     depends_on:
       db:
         condition: service_healthy
@@ -20,7 +37,7 @@
     ports:
       - "3000:80"
     depends_on:
-      - devcontainer
+      - api
 
   db:
     image: postgres:16
@@ -38,3 +55,4 @@
 
 volumes:
   postgres-data:
+  api-nuget:
