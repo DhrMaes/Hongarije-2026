@@ -169,6 +169,8 @@ const VIGNET_HU  = '...';        // Hungarian toll vignette purchase link
 
 ## Deploying (Portainer)
 
+Pushing to `main` automatically builds and pushes Docker images to GitHub Container Registry via GitHub Actions. Portainer just pulls them — no building on the server.
+
 ### Required environment variables
 
 The app **will not start** without these set. Never commit real values to git.
@@ -177,19 +179,31 @@ The app **will not start** without these set. Never commit real values to git.
 |----------|-------------|---------|
 | `DB_PASSWORD` | PostgreSQL password — pick something strong | `correct-horse-battery-staple` |
 | `APP_PORT` | Host port the app is served on | `3000` |
+| `GITHUB_OWNER` | Your GitHub username (lowercase) | `dhrmaes` |
 
-### Steps
+### First-time setup: make images public
 
-1. Push your repo to GitHub (or copy the files to your server).
-2. In Portainer → **Stacks → Add stack**.
-3. Choose **Repository** and point it at your GitHub repo, or use **Web editor** and paste `docker-compose.yml`.
-4. Scroll down to **Environment variables** and add:
-   - `DB_PASSWORD` → your chosen password
-   - `APP_PORT` → e.g. `3000` (or `80` to serve on the default HTTP port)
-5. Click **Deploy the stack**.
+By default ghcr.io packages are private. After the first GitHub Actions run:
+
+1. Go to your GitHub profile → **Packages**
+2. Click `hongarije-backend` → **Package settings** → **Change visibility** → Public
+3. Repeat for `hongarije-frontend`
+
+This lets Portainer pull images without authentication. Alternatively, keep them private and [add a deploy token](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-to-the-container-registry) in Portainer.
+
+### Portainer steps
+
+1. Push your code to `main` — wait for the GitHub Actions workflow to complete (check the **Actions** tab).
+2. In Portainer → **Stacks → Add stack → Web editor**, paste `docker-compose.yml`.
+3. Scroll down to **Environment variables** and add `DB_PASSWORD`, `APP_PORT`, and `GITHUB_OWNER`.
+4. Click **Deploy the stack**.
 
 The app will be available at `http://<your-server-ip>:<APP_PORT>`.  
 Database data is stored in a Docker volume and survives restarts and redeployments.
+
+### Updating the app
+
+Just push to `main`. Once Actions finishes, go to Portainer → your stack → **Pull and redeploy**.
 
 > **Reverse proxy tip:** if you run Nginx Proxy Manager or Traefik in front, set `APP_PORT` to any free internal port and let the proxy handle the public domain + HTTPS.
 

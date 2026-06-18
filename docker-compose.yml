@@ -15,9 +15,7 @@ services:
       retries: 10
 
   backend:
-    build:
-      context: ./backend
-      dockerfile: HongarijePlanner.Api/Dockerfile
+    image: ghcr.io/${GITHUB_OWNER:-dhrmaes}/hongarije-backend:latest
     restart: unless-stopped
     environment:
       ASPNETCORE_ENVIRONMENT: Production
@@ -29,9 +27,7 @@ services:
         condition: service_healthy
 
   frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
+    image: ghcr.io/${GITHUB_OWNER:-dhrmaes}/hongarije-frontend:latest
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:80"
