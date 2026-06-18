@@ -656,8 +656,8 @@ async function initCurrencyCalc(elemId) {
 
   let rate = 410;
   try {
-    const data = await fetch('https://api.frankfurter.app/latest?from=EUR&to=HUF').then(r => r.json());
-    rate = data.rates.HUF;
+    const data = await apiFetch('/exchange-rate');
+    rate = data.rate;
     if (lbl) lbl.textContent = `HUF (koers ${rate.toFixed(0)})`;
   } catch {
     if (lbl) lbl.textContent = `HUF (koers ~${rate} — offline)`;
