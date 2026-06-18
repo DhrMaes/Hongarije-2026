@@ -550,11 +550,21 @@ async function delInfo(id) {
   toast('Verwijderd.');
 }
 
-function initCurrencyCalc(elemId) {
-  const rate = 410;
+async function initCurrencyCalc(elemId) {
   const eur  = document.getElementById(`${elemId}-eur`);
   const huf  = document.getElementById(`${elemId}-huf`);
+  const lbl  = document.getElementById(`${elemId}-rate-label`);
   if (!eur || !huf) return;
+
+  let rate = 410;
+  try {
+    const data = await fetch('https://api.frankfurter.app/latest?from=EUR&to=HUF').then(r => r.json());
+    rate = data.rates.HUF;
+    if (lbl) lbl.textContent = `HUF (koers ${rate.toFixed(0)})`;
+  } catch {
+    if (lbl) lbl.textContent = `HUF (koers ~${rate} — offline)`;
+  }
+
   eur.addEventListener('input', () => { huf.value = (parseFloat(eur.value) * rate).toFixed(0); });
   huf.addEventListener('input', () => { eur.value = (parseFloat(huf.value) / rate).toFixed(2); });
 }
@@ -598,7 +608,7 @@ async function renderInfo() {
         <div class="currency-input">
           <label>Ft Forint</label>
           <input type="number" id="${elemId}-huf" placeholder="0" step="1" />
-          <div class="currency-rate">HUF (koers ~410)</div>
+          <div class="currency-rate" id="${elemId}-rate-label">HUF (koers ~410)</div>
         </div>
       </div>`;
     }
