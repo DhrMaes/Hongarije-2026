@@ -102,15 +102,15 @@ jobs:
             -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
             "${{ secrets.PORTAINER_URL }}/api/system/status"
 
-      - name: Update stack image tags
+      - name: Update env tags and redeploy
         run: |
-          # Fetch current stack env vars so we only update the image tags
+          # Fetch current stack env vars
           CURRENT_ENV=$(curl --fail --silent \
             -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
             "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}" \
             | jq '.Env')
 
-          # Merge: replace BACKEND_TAG and FRONTEND_TAG, keep everything else
+          # Update/add BACKEND_TAG and FRONTEND_TAG, keep everything else
           UPDATED_ENV=$(echo "$CURRENT_ENV" | jq --arg sha "${{ github.sha }}" '
             map(if .name == "BACKEND_TAG" then .value = $sha
                 elif .name == "FRONTEND_TAG" then .value = $sha
@@ -119,26 +119,14 @@ jobs:
             | if any(.[]; .name == "FRONTEND_TAG") | not then . + [{"name":"FRONTEND_TAG","value":$sha}] else . end
           ')
 
-          STACK_INFO=$(curl --fail --silent \
-            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
-            "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}")
-
-          STACK_NAME=$(echo "$STACK_INFO" | jq -r '.Name')
+          PAYLOAD=$(jq -n --argjson env "$UPDATED_ENV" \
+            '{"env": $env, "pullImage": true}')
 
           curl --fail --silent --show-error \
             -X PUT \
             -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
             -H "Content-Type: application/json" \
-            -d "{\"name\":\"$STACK_NAME\",\"env\":$UPDATED_ENV}" \
-            "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}?endpointId=${{ secrets.PORTAINER_ENDPOINT_ID }}"
-
-      - name: Trigger Portainer git redeploy
-        run: |
-          curl --fail --silent --show-error \
-            -X PUT \
-            -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
-            -H "Content-Type: application/json" \
-            -d '{"pullImage":true}' \
+            -d "$PAYLOAD" \
             "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}/git/redeploy?endpointId=${{ secrets.PORTAINER_ENDPOINT_ID }}"
 
       - name: Disconnect WireGuard
