@@ -33,7 +33,7 @@ using (var scope = app.Services.CreateScope())
     await DataSeeder.SeedGlobalDataAsync(dbContext);
 }
 
-if (app.Environment.IsDevelopment())
+if (app.Environment.IsDevelopment() || app.Configuration["ENABLE_SWAGGER"] == "true")
 {
     app.UseSwagger();
     app.UseSwaggerUI();

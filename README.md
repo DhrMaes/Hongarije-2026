@@ -99,7 +99,7 @@ The frontend lives in the `frontend/` folder:
 
 ### Backend (API / C#)
 
-The backend lives in `backend/HongarijePlanner.Api/`:
+The backend lives in `backend/`:
 
 - `Controllers/` — one file per feature (wishlist, packing, etc.)
 - `Models/` — the data classes (e.g. `WishlistItem.cs`)
@@ -129,12 +129,12 @@ The backend lives in `backend/HongarijePlanner.Api/`:
 │   └── Dockerfile        nginx for production
 │
 ├── backend/
-│   └── HongarijePlanner.Api/
-│       ├── Controllers/  One controller per feature
-│       ├── Data/         EF Core DbContext (PostgreSQL)
-│       ├── Models/       Database entity classes
-│       ├── Program.cs    App startup
-│       └── Dockerfile    Production container
+│   ├── Controllers/      One controller per feature
+│   ├── Data/             EF Core DbContext (PostgreSQL)
+│   ├── Models/           Database entity classes
+│   ├── Program.cs        App startup
+│   ├── HongarijePlanner.Api.csproj
+│   └── Dockerfile        Production container
 │
 ├── docker-compose.yml    Production deploy (Portainer)
 │
@@ -180,6 +180,7 @@ The app **will not start** without these set. Never commit real values to git.
 | `DB_PASSWORD` | PostgreSQL password — pick something strong | `correct-horse-battery-staple` |
 | `APP_PORT` | Host port the app is served on | `3000` |
 | `GITHUB_OWNER` | Your GitHub username (lowercase) | `dhrmaes` |
+| `ENABLE_SWAGGER` | Set to `"true"` to expose Swagger UI on port 5000 | `true` |
 
 ### First-time setup: make images public
 
@@ -199,6 +200,7 @@ This lets Portainer pull images without authentication. Alternatively, keep them
 4. Click **Deploy the stack**.
 
 The app will be available at `http://<your-server-ip>:<APP_PORT>`.  
+Swagger UI (if enabled) is available at `http://<your-server-ip>:5000/swagger` — only reachable on your local network, not through the reverse proxy.  
 Database data is stored in a Docker volume and survives restarts and redeployments.
 
 ### Updating the app
@@ -270,7 +272,7 @@ The database might still be starting. Wait 10 seconds, then restart the API: pre
 ### I accidentally closed the "🚀 Start API" terminal
 Open a new terminal in VS Code (`Ctrl+` `` ` ``), then run:
 ```
-cd /workspace/backend/HongarijePlanner.Api
+cd /workspace/backend
 dotnet run
 ```
 
@@ -285,7 +287,7 @@ If you change a model in `Models/`, you need to create a migration so the databa
 
 ```bash
 # In the VS Code terminal (inside the dev container):
-cd /workspace/backend/HongarijePlanner.Api
+cd /workspace/backend
 dotnet ef migrations add DescribeYourChange
 dotnet ef database update
 ```
