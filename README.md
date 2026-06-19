@@ -171,6 +171,18 @@ const VIGNET_HU  = '...';        // Hungarian toll vignette purchase link
 
 Pushing to `main` automatically builds and pushes Docker images to GitHub Container Registry via GitHub Actions. Portainer just pulls them — no building on the server.
 
+### Required GitHub secrets
+
+Add these in your repo → **Settings → Secrets and variables → Actions**:
+
+| Secret | Description |
+|--------|-------------|
+| `WG_CONFIG` | Full WireGuard config file content |
+| `PORTAINER_API_KEY` | Portainer API key (User settings → Access tokens) |
+| `PORTAINER_URL` | Internal Portainer URL over VPN, e.g. `http://10.100.0.2:9000` |
+| `PORTAINER_STACK_ID` | Numeric stack ID (visible in the Portainer URL when viewing the stack) |
+| `PORTAINER_ENDPOINT_ID` | Numeric endpoint/environment ID (same URL) |
+
 ### Required environment variables
 
 The app **will not start** without these set. Never commit real values to git.
@@ -180,6 +192,8 @@ The app **will not start** without these set. Never commit real values to git.
 | `DB_PASSWORD` | PostgreSQL password — pick something strong | `correct-horse-battery-staple` |
 | `APP_PORT` | Host port the app is served on | `3000` |
 | `GITHUB_OWNER` | Your GitHub username (lowercase) | `dhrmaes` |
+| `BACKEND_TAG` | Backend image tag — set automatically by CI/CD | `a1b2c3d...` |
+| `FRONTEND_TAG` | Frontend image tag — set automatically by CI/CD | `a1b2c3d...` |
 | `ENABLE_SWAGGER` | Set to `"true"` to expose Swagger UI on port 5000 | `true` |
 
 ### First-time setup: make images public
