@@ -104,11 +104,11 @@ jobs:
 
       - name: Update env tags and redeploy
         run: |
-          # Fetch current stack env vars
+          # Fetch current stack env vars (default to empty array if null)
           CURRENT_ENV=$(curl --fail --silent \
             -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
             "${{ secrets.PORTAINER_URL }}/api/stacks/${{ secrets.PORTAINER_STACK_ID }}" \
-            | jq '.Env')
+            | jq '.Env // []')
 
           # Update/add BACKEND_TAG and FRONTEND_TAG, keep everything else
           UPDATED_ENV=$(echo "$CURRENT_ENV" | jq --arg sha "${{ github.sha }}" '
@@ -123,6 +123,7 @@ jobs:
             '{"env": $env, "pullImage": true}')
 
           curl --fail --silent --show-error \
+            --max-time 900 \
             -X PUT \
             -H "X-API-Key: ${{ secrets.PORTAINER_API_KEY }}" \
             -H "Content-Type: application/json" \
