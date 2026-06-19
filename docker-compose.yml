@@ -15,7 +15,7 @@ services:
       retries: 10
 
   backend:
-    image: ghcr.io/${GITHUB_OWNER:-dhrmaes}/hongarije-backend:latest
+    image: ghcr.io/${GITHUB_OWNER:-dhrmaes}/hongarije-backend:${BACKEND_TAG:-latest}
     restart: unless-stopped
     ports:
       - "5000:8080"
@@ -30,7 +30,7 @@ services:
         condition: service_healthy
 
   frontend:
-    image: ghcr.io/${GITHUB_OWNER:-dhrmaes}/hongarije-frontend:latest
+    image: ghcr.io/${GITHUB_OWNER:-dhrmaes}/hongarije-frontend:${FRONTEND_TAG:-latest}
     restart: unless-stopped
     ports:
       - "${APP_PORT:-3000}:80"
