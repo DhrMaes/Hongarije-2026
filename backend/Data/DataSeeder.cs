@@ -7,6 +7,8 @@ public static class DataSeeder
 {
     private const string AdminName = "Yana";
     private const string HouseLink = "https://www.interhome.be/rental/9fef3e704583bf14177d5eae79bb0efd";
+    private const string KeyPickupLink = "https://maps.google.com/?q=Familia+Camping+HU-8637+Balatonoszod";
+    private const string SplitwiseLink = "https://www.splitwise.com/join/KWPtU3amoSN+116cvr?v=e";
 
     // Called once at startup — seeds info cards, shared packing, and the admin user.
     public static async Task SeedGlobalDataAsync(AppDbContext db)
@@ -52,7 +54,68 @@ public static class DataSeeder
 
     private static async Task SeedInfoAsync(AppDbContext db)
     {
-        if (await db.InfoItems.AnyAsync()) return;
+        var currencyCards = await db.InfoItems
+            .Where(item =>
+                (item.Special != null && EF.Functions.ILike(item.Special, "currency")) ||
+                EF.Functions.ILike(item.Title, "%huf%") ||
+                EF.Functions.ILike(item.Title, "%euro%") ||
+                EF.Functions.ILike(item.Category, "%valuta%"))
+            .ToListAsync();
+        if (currencyCards.Count != 0)
+        {
+            db.InfoItems.RemoveRange(currencyCards);
+            await db.SaveChangesAsync();
+        }
+
+        var hasAnyInfo = await db.InfoItems.AnyAsync();
+        if (hasAnyInfo)
+        {
+            var hasKeyHandoverInfo = await db.InfoItems.AnyAsync(item =>
+                (item.Special != null && EF.Functions.ILike(item.Special, "keys")) ||
+                EF.Functions.ILike(item.Title, "%sleuteloverdracht%"));
+            if (!hasKeyHandoverInfo)
+            {
+                db.InfoItems.Add(new InfoItem
+                {
+                    Id = NewId(),
+                    Category = "Sleutel",
+                    Title = "Sleuteloverdracht",
+                    Body = "Contactpersoon: Monika Winklerne Csehi\n" +
+                           "Telefoon: +36203880513\n" +
+                           "E-mail: winklerreisen@gmail.com\n",
+                    Link = KeyPickupLink,
+                    Special = "keys",
+                });
+                await db.SaveChangesAsync();
+            }
+
+            var splitwiseItem = await db.InfoItems.FirstOrDefaultAsync(item =>
+                (item.Special != null && EF.Functions.ILike(item.Special, "splitwise")) ||
+                EF.Functions.ILike(item.Title, "%splitwise%"));
+            if (splitwiseItem is null)
+            {
+                db.InfoItems.Add(new InfoItem
+                {
+                    Id = NewId(),
+                    Category = "Budget",
+                    Title = "Splitwise",
+                    Body = "Hou gedeelde kosten bij in Splitwise.",
+                    Link = SplitwiseLink,
+                    Special = "splitwise",
+                });
+                await db.SaveChangesAsync();
+            }
+            else
+            {
+                splitwiseItem.Category = "Budget";
+                splitwiseItem.Title = "Splitwise";
+                splitwiseItem.Body = "Hou gedeelde kosten bij in Splitwise.";
+                splitwiseItem.Link = SplitwiseLink;
+                splitwiseItem.Special = "splitwise";
+                await db.SaveChangesAsync();
+            }
+            return;
+        }
 
         db.InfoItems.AddRange(
             new InfoItem
@@ -79,9 +142,22 @@ public static class DataSeeder
             new InfoItem
             {
                 Id       = NewId(),
-                Category = "Valuta",
-                Title    = "Euro ↔ HUF calculator",
-                Special  = "currency",
+                Category = "Sleutel",
+                Title    = "Sleuteloverdracht",
+                Body     = "Contactpersoon: Monika Winklerne Csehi\n" +
+                           "Telefoon: +36203880513\n" +
+                           "E-mail: winklerreisen@gmail.com\n",
+                Link     = KeyPickupLink,
+                Special  = "keys",
+            },
+            new InfoItem
+            {
+                Id       = NewId(),
+                Category = "Budget",
+                Title    = "Splitwise",
+                Body     = "Hou gedeelde kosten bij in Splitwise.",
+                Link     = SplitwiseLink,
+                Special  = "splitwise",
             }
         );
 

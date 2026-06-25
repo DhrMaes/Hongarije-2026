@@ -258,22 +258,58 @@ header {
   scrollbar-width: none;
 }
 .tab-btn {
-  padding: 0.78rem 1.15rem;
+  padding: 0.68rem 0.95rem;
   background: none;
   border: none;
   border-bottom: 2px solid transparent;
   font-family: 'Inter', sans-serif;
-  font-size: 0.85rem;
-  color: rgba(255,255,255,0.5);
+  font-size: 1.35rem;
+  color: rgba(255,255,255,0.4);
   cursor: pointer;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 0;
   transition: color 0.15s, border-color 0.15s;
+  position: relative;
 }
 .tab-btn.active {
   color: white;
   border-bottom-color: var(--steel2);
+  gap: 0.45rem;
 }
-.tab-btn:hover { color: rgba(255,255,255,0.8); }
+.tab-btn:hover { color: rgba(255,255,255,0.7); }
+.tab-btn .tab-label {
+  display: none;
+  max-width: 0;
+  opacity: 0;
+  overflow: hidden;
+  font-size: 0.82rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  transition: max-width 0.2s ease, opacity 0.15s ease;
+}
+.tab-btn.active .tab-label {
+  display: inline-block;
+  max-width: 9.5rem;
+  opacity: 1;
+}
+.tab-btn[title]:hover::after {
+  content: attr(title);
+  position: absolute;
+  bottom: -1.8rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: rgba(0,0,0,0.8);
+  color: white;
+  padding: 0.35rem 0.65rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 500;
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+}
 
 /* â”€â”€ CONTENT â”€â”€ */
 .content {
@@ -848,8 +884,12 @@ header {
   gap: 0.3rem;
   transition: background 0.15s;
   white-space: nowrap;
+  text-decoration: none;
 }
-.info-btn:hover { background: var(--navy); }
+.info-btn:hover {
+  background: var(--navy);
+  text-decoration: none;
+}
 .info-btn.alt { background: var(--gold); }
 .info-btn.alt:hover { background: #b8931f; }
 
@@ -961,6 +1001,7 @@ header {
   .content { padding: 1.25rem 0.85rem; }
   .modal { padding: 1.4rem 1.25rem; }
   .nick-card { padding: 2rem 1.4rem; }
+  .tab-btn.active .tab-label { max-width: 6.6rem; }
 
   /* Header: hide app title on very small screens to give room to user pill */
   .header-title { font-size: 1rem; }
@@ -977,3 +1018,14 @@ header {
   #toast { white-space: normal; text-align: center; max-width: calc(100vw - 2rem); }
 }
 
+
+/* Weather Widget */
+#weather-widget {
+  padding: 1rem 0;
+}
+
+.weather-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}

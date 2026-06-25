@@ -14,6 +14,7 @@ public class InfoController(AppDbContext dbContext) : ControllerBase
     public async Task<ActionResult<IEnumerable<InfoItem>>> GetInfoItems()
     {
         var items = await dbContext.InfoItems
+            .Where(item => item.Special == null || !EF.Functions.ILike(item.Special, "currency"))
             .OrderBy(item => item.Category)
             .ThenBy(item => item.Title)
             .ToListAsync();
@@ -38,6 +39,23 @@ public class InfoController(AppDbContext dbContext) : ControllerBase
         await dbContext.SaveChangesAsync();
 
         return Created($"/api/info/{item.Id}", item);
+    }
+
+    [HttpPut("{id}")]
+    public async Task<IActionResult> UpdateInfoItem(string id, [FromBody] UpdateInfoItemRequest request)
+    {
+        var item = await dbContext.InfoItems.FindAsync(id);
+        if (item is null)
+        {
+            return NotFound();
+        }
+
+        item.Category = request.Category;
+        item.Title = request.Title;
+        item.Body = request.Body;
+
+        await dbContext.SaveChangesAsync();
+        return Ok(item);
     }
 
     [HttpDelete("{id}")]
@@ -68,5 +86,16 @@ public class InfoController(AppDbContext dbContext) : ControllerBase
         public string? Link { get; set; }
 
         public string? Special { get; set; }
+    }
+
+    public class UpdateInfoItemRequest
+    {
+        [Required]
+        public string Category { get; set; } = string.Empty;
+
+        [Required]
+        public string Title { get; set; } = string.Empty;
+
+        public string? Body { get; set; }
     }
 }

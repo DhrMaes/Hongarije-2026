@@ -19,6 +19,8 @@ let me = null;
 let meIsAdmin = false;
 let allUsers = [];
 let skipAutoLogin = false;
+let editingInfoId = null;
+let infoItemsById = {};
 
 /* ── HELPERS ── */
 function esc(s) {
@@ -34,6 +36,42 @@ function isAdminUser(name) { return allUsers.find(u => u.name === name)?.isAdmin
 
 function foodCatLabel(val) {
   return FOOD_CATEGORIES.find(c => c.value === val)?.label ?? FOOD_CATEGORIES[0].label;
+}
+
+function weatherEmoji(condition) {
+  const c = String(condition || '').toLowerCase();
+  if (c.includes('thunder')) return '⛈️';
+  if (c.includes('snow')) return '❄️';
+  if (c.includes('rain') || c.includes('drizzle')) return '🌧️';
+  if (c.includes('fog')) return '🌫️';
+  if (c.includes('overcast')) return '☁️';
+  if (c.includes('partly')) return '⛅';
+  if (c.includes('clear')) return '☀️';
+  return '🌤️';
+}
+
+function shortDayLabel(dayText, fallbackIndex = 0) {
+  const source = String(dayText || '').trim().toLowerCase();
+  const first = source.split(' ')[0];
+  const map = {
+    maandag: 'ma',
+    dinsdag: 'di',
+    woensdag: 'wo',
+    donderdag: 'do',
+    vrijdag: 'vr',
+    zaterdag: 'za',
+    zondag: 'zo',
+    ma: 'ma',
+    di: 'di',
+    wo: 'wo',
+    do: 'do',
+    vr: 'vr',
+    za: 'za',
+    zo: 'zo',
+  };
+  if (map[first]) return map[first];
+  const order = ['ma', 'di', 'wo', 'do', 'vr', 'za', 'zo'];
+  return order[fallbackIndex % order.length];
 }
 
 function toast(msg, durationMs = 2200) {
@@ -142,8 +180,7 @@ function updateHeader() {
   document.getElementById('hdr-pin-btn').style.display = isAdmin() ? 'inline' : 'none';
   document.getElementById('itinerary-add-btn').innerHTML =
     `<button class="btn-add" onclick="openModal('itinerary')">+ Eetidee toevoegen</button>`;
-  document.getElementById('info-add-btn').innerHTML = isAdmin()
-    ? `<button class="btn-add" onclick="openModal('info')">+ Info toevoegen</button>` : '';
+  document.getElementById('info-add-btn').innerHTML = '';
 }
 
 /* ── TABS ── */
@@ -168,6 +205,13 @@ function closeModal(t) {
   document.querySelectorAll(`#modal-${t} input, #modal-${t} textarea, #modal-${t} select`).forEach(el => {
     el.value = el.tagName === 'SELECT' ? (el.options[0]?.value ?? '') : '';
   });
+  if (t === 'info') {
+    editingInfoId = null;
+    const title = document.getElementById('info-modal-title');
+    const save = document.getElementById('info-modal-save');
+    if (title) title.textContent = '📌 Info bewerken';
+    if (save) save.textContent = 'Wijzigingen opslaan';
+  }
 }
 
 function confirmDialog(message) {
@@ -632,13 +676,33 @@ async function saveInfo() {
   if (!isAdmin()) return;
   const title = document.getElementById('n-title').value.trim();
   if (!title) { document.getElementById('n-title').focus(); return; }
-  await apiFetch('/info', {
-    method: 'POST',
+  if (!editingInfoId) return;
+  await apiFetch(`/info/${editingInfoId}`, {
+    method: 'PUT',
     body: { category: document.getElementById('n-cat').value, title, body: document.getElementById('n-body').value.trim() },
   });
   closeModal('info');
   await renderInfo();
-  toast('Info opgeslagen! 📌');
+  toast('Info bijgewerkt! 📌');
+}
+
+function openInfoEditor(id) {
+  if (!isAdmin()) return;
+  const item = infoItemsById[id];
+  if (!item) return;
+  editingInfoId = id;
+  const title = document.getElementById('info-modal-title');
+  const save = document.getElementById('info-modal-save');
+  if (title) title.textContent = '📌 Info bewerken';
+  if (save) save.textContent = 'Wijzigingen opslaan';
+
+  const cat = document.getElementById('n-cat');
+  const t = document.getElementById('n-title');
+  const body = document.getElementById('n-body');
+  if (cat) cat.value = item.category || cat.options[0]?.value || '';
+  if (t) t.value = item.title || '';
+  if (body) body.value = item.body || '';
+  openModal('info');
 }
 
 async function delInfo(id) {
@@ -681,8 +745,18 @@ async function renderInfo() {
     return;
   }
 
-  el.innerHTML = items.map(item => {
+  const infoOrder = { keys: 0, maps: 1, vignets: 2, splitwise: 3 };
+  const orderedItems = [...items].sort((a, b) => {
+    const wa = infoOrder[a.special] ?? 99;
+    const wb = infoOrder[b.special] ?? 99;
+    if (wa !== wb) return wa - wb;
+    return String(a.title || '').localeCompare(String(b.title || ''), 'nl');
+  });
+  infoItemsById = Object.fromEntries(items.map(item => [item.id, item]));
+
+  el.innerHTML = orderedItems.map(item => {
     const titleLink = item.link || (item.title === 'Appartement Moni 1' ? HOUSE_LINK : '');
+    const titleIcon = item.special === 'keys' ? '🔑' : item.special === 'splitwise' ? '💸' : '🏠';
     let specialContent = '';
     if (item.special === 'maps') {
       specialContent = `<div class="info-buttons">
@@ -694,38 +768,143 @@ async function renderInfo() {
         <a href="${VIGNET_AT}" target="_blank" class="vignet-link"><span class="vignet-emoji">🇦🇹</span><span>Vignet Oostenrijk</span></a>
         <a href="${VIGNET_HU}" target="_blank" class="vignet-link"><span class="vignet-emoji">🇭🇺</span><span>Vignet Hongarije</span></a>
       </div>`;
-    } else if (item.special === 'currency') {
-      const elemId = `calc-${item.id}`;
-      setTimeout(() => initCurrencyCalc(elemId), 100);
-      specialContent = `<div class="currency-calc">
-        <div class="currency-input">
-          <label>€ Euro</label>
-          <input type="number" id="${elemId}-eur" placeholder="0.00" step="0.01" />
-          <div class="currency-rate">EUR</div>
-        </div>
-        <div class="currency-input">
-          <label>Ft Forint</label>
-          <input type="number" id="${elemId}-huf" placeholder="0" step="1" />
-          <div class="currency-rate" id="${elemId}-rate-label">HUF (koers ~410)</div>
-        </div>
+    } else if (item.special === 'splitwise' && titleLink) {
+      specialContent = `<div class="info-buttons">
+        <a href="${esc(titleLink)}" target="_blank" rel="noreferrer" class="info-btn">💸 Open Splitwise</a>
       </div>`;
     }
 
     return `<div class="info-card">
-      <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.5rem">
-        <div style="flex:1">
-          <div class="info-cat">${esc(item.category)}</div>
-          <div class="info-title-row">
-            <div class="info-title">${esc(item.title)}</div>
-            ${titleLink ? `<a href="${esc(titleLink)}" target="_blank" rel="noreferrer" class="info-link-icon" aria-label="Open ${esc(item.title)}">🏠</a>` : ''}
-          </div>
-          ${item.body ? `<div class="info-body">${esc(item.body)}</div>` : ''}
-          ${specialContent}
-        </div>
-        ${isAdmin() ? `<button class="btn-icon del" onclick="delInfo('${item.id}')" title="Verwijderen">✕</button>` : ''}
+      <div class="info-cat">${esc(item.category)}</div>
+      <div class="info-title-row">
+        <div class="info-title">${esc(item.title)}</div>
+        ${titleLink ? `<a href="${esc(titleLink)}" target="_blank" rel="noreferrer" class="info-link-icon" aria-label="Open ${esc(item.title)}">${titleIcon}</a>` : ''}
+        ${isAdmin() ? `<button class="btn-icon" onclick="openInfoEditor('${item.id}')" title="Bewerken" style="width:1.5rem;height:1.5rem;font-size:.78rem">✎</button>` : ''}
       </div>
+      ${item.body ? `<div class="info-body">${esc(item.body)}</div>` : ''}
+      ${specialContent}
     </div>`;
   }).join('');
+}
+
+/* ── FORINTINATOR ── */
+async function renderForintinator() {
+  const el = document.getElementById('forintinator-list');
+  const elemId = 'forintinator-calc';
+  
+  let rate = 410;
+  try {
+    const data = await apiFetch('/exchange-rate');
+    rate = data.rate;
+  } catch {
+    // Use default fallback
+  }
+  
+  el.innerHTML = `<div style="display:grid;grid-template-columns:1fr 1fr;gap:2rem;max-width:500px">
+    <div class="currency-input">
+      <label>€ Euro</label>
+      <input type="number" id="${elemId}-eur" placeholder="0.00" step="0.01" />
+      <div class="currency-rate">EUR</div>
+    </div>
+    <div class="currency-input">
+      <label>Ft Forint</label>
+      <input type="number" id="${elemId}-huf" placeholder="0" step="1" />
+      <div class="currency-rate" id="${elemId}-rate-label">HUF (koers ${rate.toFixed(0)})</div>
+    </div>
+  </div>`;
+  
+  setTimeout(() => initCurrencyCalc(elemId), 100);
+}
+
+/* ── WEER ── */
+async function renderWeather() {
+  const el = document.getElementById('weather-widget');
+  try {
+    const weather = await apiFetch('/weather');
+    
+    const temp = Math.round(weather.temperature);
+    const condition = weather.condition || 'Unknown';
+    const humidity = weather.humidity || '—';
+    const windSpeed = weather.windSpeed || '—';
+    const sunrise = weather.sunrise || '--:--';
+    const sunset = weather.sunset || '--:--';
+    const uvIndex = Number(weather.uvIndex ?? 0);
+    const forecast = Array.isArray(weather.forecast) ? weather.forecast.slice(0, 5) : [];
+    const hourly = Array.isArray(weather.hourly) ? weather.hourly.slice(0, 12) : [];
+    const currentEmoji = weatherEmoji(condition);
+
+    const hourlyHtml = hourly.length
+      ? `<div style="display:flex;flex-direction:column;gap:.7rem">
+          <div style="font-size:.82rem;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Per uur</div>
+          <div style="display:flex;gap:.55rem;overflow-x:auto;padding:.1rem .05rem .35rem;scroll-snap-type:x proximity;-webkit-overflow-scrolling:touch">
+            ${hourly.map(hour => `
+              <div style="flex:0 0 84px;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:.62rem .55rem;text-align:center;scroll-snap-align:start">
+                <div style="font-size:.78rem;color:var(--muted);margin-bottom:.35rem">${esc(hour.time || '--:--')}</div>
+                <div style="font-size:1.08rem;line-height:1;margin-bottom:.18rem">${weatherEmoji(hour.condition)}</div>
+                <div style="font-size:.98rem;color:var(--navy);font-weight:700;line-height:1.1">${Math.round(hour.temperature ?? 0)}°</div>
+                <div style="font-size:.73rem;color:var(--muted);margin-top:.2rem">UV ${Number(hour.uvIndex ?? 0).toFixed(1)}</div>
+              </div>
+            `).join('')}
+          </div>
+        </div>`
+      : '';
+
+    const forecastHtml = forecast.length
+      ? `<div style="display:flex;flex-direction:column;gap:.7rem">
+          <div style="font-size:.82rem;color:var(--muted);font-weight:700;letter-spacing:.06em;text-transform:uppercase">Komende dagen</div>
+          <div style="display:grid;grid-template-columns:1fr;gap:.6rem">
+            ${forecast.map(day => `
+              <div style="display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:.8rem;background:var(--white);border:1px solid var(--border);border-radius:10px;padding:.75rem .9rem">
+                <div style="font-size:.9rem;color:var(--navy);font-weight:700;text-transform:uppercase">${esc(shortDayLabel(day.day))}</div>
+                <div style="font-size:1.1rem;line-height:1">${weatherEmoji(day.condition)}</div>
+                <div style="display:flex;align-items:baseline;gap:.3rem">
+                  <span style="font-size:.86rem;color:var(--faint)">${Math.round(day.minTemp ?? 0)}°</span>
+                  <span style="font-size:.95rem;color:var(--navy);font-weight:700">${Math.round(day.maxTemp ?? 0)}°</span>
+                </div>
+              </div>
+            `).join('')}
+          </div>
+        </div>`
+      : '';
+    
+    el.innerHTML = `<div style="max-width:500px;display:flex;flex-direction:column;gap:1.5rem">
+      <div style="background:linear-gradient(135deg, var(--sky) 0%, var(--ice2) 100%);border-radius:var(--r2);padding:2rem;text-align:center;box-shadow:var(--shadow)">
+        <div style="font-size:3rem;margin-bottom:.5rem">${currentEmoji}</div>
+        <div style="font-size:2.1rem;font-weight:600;color:var(--navy);margin-bottom:.5rem">${temp}°C</div>
+        <div style="font-size:1.05rem;color:var(--muted);text-transform:capitalize">${esc(condition)}</div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1rem">
+        <div style="background:var(--ice);border-radius:var(--r);padding:.95rem .9rem;text-align:center">
+          <div style="font-size:0.74rem;color:var(--muted);margin-bottom:.35rem">Vochtigheid</div>
+          <div style="font-size:1.3rem;font-weight:600;color:var(--navy)">${humidity}%</div>
+        </div>
+        <div style="background:var(--ice);border-radius:var(--r);padding:.95rem .9rem;text-align:center">
+          <div style="font-size:0.74rem;color:var(--muted);margin-bottom:.35rem">Windsnelheid</div>
+          <div style="font-size:1.3rem;font-weight:600;color:var(--navy)">${windSpeed} m/s</div>
+        </div>
+        <div style="background:var(--ice);border-radius:var(--r);padding:.95rem .9rem;text-align:center">
+          <div style="font-size:0.74rem;color:var(--muted);margin-bottom:.35rem">UV-index</div>
+          <div style="font-size:1.3rem;font-weight:700;color:var(--navy)">${uvIndex.toFixed(1)}</div>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:1rem">
+        <div style="background:var(--ice);border-radius:var(--r);padding:.82rem .95rem;text-align:center">
+          <div style="font-size:0.74rem;color:var(--muted);margin-bottom:.28rem">Zonsopkomst</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--navy)">🌅 ${esc(sunrise)}</div>
+        </div>
+        <div style="background:var(--ice);border-radius:var(--r);padding:.82rem .95rem;text-align:center">
+          <div style="font-size:0.74rem;color:var(--muted);margin-bottom:.28rem">Zonsondergang</div>
+          <div style="font-size:1.1rem;font-weight:700;color:var(--navy)">🌇 ${esc(sunset)}</div>
+        </div>
+      </div>
+      ${hourlyHtml}
+      ${forecastHtml}
+      <div style="font-size:0.85rem;color:var(--muted);text-align:center">📍 Balatonszemes • Hongarije</div>
+    </div>`;
+  } catch (err) {
+    el.innerHTML = `<div class="empty"><div class="ei">🌤️</div><p>⚠️ Kan weerdata niet ophalen</p></div>`;
+    console.error('Weer error:', err);
+  }
 }
 
 /* ── INIT ── */
@@ -733,8 +912,10 @@ async function renderAll() {
   await Promise.all([
     renderWishlist(),
     renderItinerary(),
-    renderPacking(),
     renderShopping(),
+    renderPacking(),
+    renderForintinator(),
+    renderWeather(),
     renderInfo(),
   ]);
 }

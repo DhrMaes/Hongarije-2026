@@ -16,15 +16,15 @@
     volumes:
       - ..:/workspace:cached
       - api-nuget:/root/.nuget/packages
-    working_dir: /workspace/backend/HongarijePlanner.Api
+    working_dir: /workspace/backend
     command: dotnet watch run --non-interactive --no-launch-profile
     environment:
       ASPNETCORE_ENVIRONMENT: Development
-      ASPNETCORE_URLS: http://+:5000
+      ASPNETCORE_URLS: http://+:8080
       DOTNET_RUNNING_IN_CONTAINER: "true"
       ConnectionStrings__DefaultConnection: Host=db;Port=5432;Database=hongarije;Username=hongarije;Password=hongarije
     ports:
-      - "5000:5000"
+      - "5000:8080"
     depends_on:
       db:
         condition: service_healthy

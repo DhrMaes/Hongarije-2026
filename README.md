@@ -1,4 +1,4 @@
-﻿# 🇭🇺 Hongarije 2026
+# 🇭🇺 Hongarije 2026
 
 Collaborative trip-planning app for our Hungary holiday — activities, food ideas, packing lists, shopping, and practical info, all shared in real time.
 

@@ -45,11 +45,13 @@
 
   <div class="tabs">
     <div class="tabs-inner">
-      <button class="tab-btn active" onclick="showTab('wishlist',this)">🏖️ Activiteiten</button>
-      <button class="tab-btn" onclick="showTab('itinerary',this)">🍽️ Eten</button>
-      <button class="tab-btn" onclick="showTab('packing',this)">🧳 Valies</button>
-      <button class="tab-btn" onclick="showTab('shopping',this)">🛒 Boodschappen</button>
-      <button class="tab-btn" onclick="showTab('info',this)">📌 Info</button>
+      <button class="tab-btn active" onclick="showTab('wishlist',this)" title="Activiteiten" aria-label="Activiteiten"><span class="tab-emoji">🏖️</span><span class="tab-label">Activiteiten</span></button>
+      <button class="tab-btn" onclick="showTab('itinerary',this)" title="Eten" aria-label="Eten"><span class="tab-emoji">🍗</span><span class="tab-label">Eten</span></button>
+      <button class="tab-btn" onclick="showTab('shopping',this)" title="Boodschappen" aria-label="Boodschappen"><span class="tab-emoji">🛒</span><span class="tab-label">Boodschappen</span></button>
+      <button class="tab-btn" onclick="showTab('packing',this)" title="Valies" aria-label="Valies"><span class="tab-emoji">🧳</span><span class="tab-label">Valies</span></button>
+      <button class="tab-btn" onclick="showTab('forintinator',this)" title="Forintinator" aria-label="Forintinator"><span class="tab-emoji">💸</span><span class="tab-label">Forintinator</span></button>
+      <button class="tab-btn" onclick="showTab('weather',this)" title="Weer" aria-label="Weer"><span class="tab-emoji">🌤️</span><span class="tab-label">Weer</span></button>
+      <button class="tab-btn" onclick="showTab('info',this)" title="Info" aria-label="Info"><span class="tab-emoji">📌</span><span class="tab-label">Info</span></button>
     </div>
   </div>
 
@@ -58,7 +60,7 @@
     <!-- ACTIVITEITEN -->
     <div id="tab-wishlist" class="tab-panel active">
       <div class="section-top">
-        <h2>Activiteiten</h2>
+        <h2>🏖️ Activiteiten</h2>
         <button class="btn-add" onclick="openModal('wishlist')">+ Activiteit toevoegen</button>
       </div>
       <p class="section-desc">Iedereen kan activiteiten toevoegen en stemmen. Sorteer op populariteit.</p>
@@ -68,36 +70,54 @@
     <!-- ETEN -->
     <div id="tab-itinerary" class="tab-panel">
       <div class="section-top">
-        <h2>Eten</h2>
+        <h2>🍗 Eten</h2>
         <span id="itinerary-add-btn"></span>
       </div>
       <p class="section-desc">Iedereen kan eetideeën toevoegen en stemmen. Kies een categorie: zelf koken, aan het meer of op restaurant.</p>
       <div id="itinerary-days"></div>
     </div>
 
-    <!-- VALIES -->
-    <div id="tab-packing" class="tab-panel">
-      <div class="section-top">
-        <h2>Valies</h2>
-      </div>
-      <p class="section-desc">Iedereen ziet alleen zijn eigen valies. De essentials staan standaard klaar, extra items blijven privé per profiel.</p>
-      <div id="packing-cols" class="packing-cols"></div>
-    </div>
-
     <!-- BOODSCHAPPEN -->
     <div id="tab-shopping" class="tab-panel">
       <div class="section-top">
-        <h2>Boodschappen</h2>
+        <h2>🛒 Boodschappen</h2>
         <button class="btn-add" onclick="openModal('shopping')">+ Boodschap toevoegen</button>
       </div>
       <p class="section-desc">Wat wil je graag eten of drinken? Voeg hier je favorieten toe, iedereen kan het zien en vinken.</p>
       <div id="shopping-list"></div>
     </div>
 
+    <!-- VALIES -->
+    <div id="tab-packing" class="tab-panel">
+      <div class="section-top">
+        <h2>🧳 Valies</h2>
+      </div>
+      <p class="section-desc">Iedereen ziet alleen zijn eigen valies. De essentials staan standaard klaar, extra items blijven privé per profiel.</p>
+      <div id="packing-cols" class="packing-cols"></div>
+    </div>
+
+    <!-- FORINTINATOR -->
+    <div id="tab-forintinator" class="tab-panel">
+      <div class="section-top">
+        <h2>💸 Forintinator</h2>
+      </div>
+      <p class="section-desc">Converteer snel tussen EUR en Hongaarse forint.</p>
+      <div id="forintinator-list"></div>
+    </div>
+
+    <!-- WEER -->
+    <div id="tab-weather" class="tab-panel">
+      <div class="section-top">
+        <h2>🌤️ Weer</h2>
+      </div>
+      <p class="section-desc">Actueel weerrapport voor Balatonszemes.</p>
+      <div id="weather-widget"></div>
+    </div>
+
     <!-- INFO -->
     <div id="tab-info" class="tab-panel">
       <div class="section-top">
-        <h2>Praktische info</h2>
+        <h2>📌 Praktische info</h2>
         <span id="info-add-btn"></span>
       </div>
       <p class="section-desc">Verblijf, vignetten, valuta, alleen de beheerder voegt dit toe.</p>
@@ -129,7 +149,7 @@
 <!-- Eten -->
 <div class="modal-overlay" id="modal-itinerary">
   <div class="modal">
-    <h3>🍽️ Eetidee toevoegen</h3>
+    <h3>� Eetidee toevoegen</h3>
     <div class="form-group"><label>Categorie</label>
       <select id="i-cat">
         <option value="zelf-koken">Zelf koken</option>
@@ -203,7 +223,7 @@
 <!-- Info (admin only) -->
 <div class="modal-overlay" id="modal-info">
   <div class="modal">
-    <h3>📌 Info toevoegen</h3>
+    <h3 id="info-modal-title">📌 Info bewerken</h3>
     <div class="form-group"><label>Categorie</label>
       <select id="n-cat">
         <option>Verblijf</option>
@@ -220,7 +240,7 @@
       <textarea id="n-body" placeholder="Adres, bevestigingscode, tijdstip…" style="min-height:110px"></textarea></div>
     <div class="modal-actions">
       <button class="btn-cancel" onclick="closeModal('info')">Annuleer</button>
-      <button class="btn-save" onclick="saveInfo()">Opslaan</button>
+      <button class="btn-save" id="info-modal-save" onclick="saveInfo()">Wijzigingen opslaan</button>
     </div>
   </div>
 </div>
